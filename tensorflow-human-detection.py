@@ -8,6 +8,7 @@ import cv2
 import time
 import argparse
 import os
+import mimetypes
 
 
 class DetectorAPI:
@@ -64,32 +65,54 @@ class DetectorAPI:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, help="model path", default = os.path.join(os.path.dirname(__file__), 'models/ssd_mobilenet_v1_coco_2017_11_17/frozen_inference_graph.pb'))
-    parser.add_argument("video_path", type=str, help="video path")
-    parser.add_argument("--threshold", type=int, default = 0.7, help="threshold")
+    parser.add_argument("video_path", type=str, help="video or image path")
+    parser.add_argument("--threshold", type=float, default = 0.7, help="threshold")
+    parser.add_argument("--display", default=False ,action = 'store_true', help = 'display detection result')
 
     args = parser.parse_args()
 
     model_path = args.model_path
     odapi = DetectorAPI(path_to_ckpt=model_path)
     threshold = args.threshold
-    cap = cv2.VideoCapture(args.video_path)
+    type, encoding = mimetypes.guess_type( args.video_path )
+    if 'video' in type :
+        cap = cv2.VideoCapture(args.video_path)
 
-    r = True
-    while r:
-        r, img = cap.read()
+        r = Truei
+        t = 0
+        while r:
+            r, img = cap.read()
+            img = cv2.resize(img, (1280, 720))
+
+            boxes, scores, classes, num = odapi.processFrame(img)
+
+        # Visualization of the results of a detection.
+
+            for i in range(len(boxes)):
+            # Class 1 represents human
+                if classes[i] == 1 and scores[i] > threshold:
+                    box = boxes[i]
+                    cv2.rectangle(img,(box[1],box[0]),(box[3],box[2]),(255,0,0),2)
+                if args.display : 
+                    cv2.imshow("preview", img)
+                    key = cv2.waitKey(1)
+                if key & 0xFF == ord('q'):
+                    break
+        else :
+            if len([c for c in classes if c == 1]) > 1 : 
+                cv2.imwrite('out/img%s.jpeg'%t, img)
+                t = t+1
+
+
+    if 'image' in type : 
+        img = cv2.imread(args.video_path)
         img = cv2.resize(img, (1280, 720))
 
         boxes, scores, classes, num = odapi.processFrame(img)
 
-        # Visualization of the results of a detection.
-
         for i in range(len(boxes)):
-            # Class 1 represents human
             if classes[i] == 1 and scores[i] > threshold:
                 box = boxes[i]
                 cv2.rectangle(img,(box[1],box[0]),(box[3],box[2]),(255,0,0),2)
 
-        cv2.imshow("preview", img)
-        key = cv2.waitKey(1)
-        if key & 0xFF == ord('q'):
-            break
+        cv2.imwrite('out/%s' % os.path.basename(args.video_path) , img)
